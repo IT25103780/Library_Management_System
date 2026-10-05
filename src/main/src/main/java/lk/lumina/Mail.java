@@ -1,7 +1,0 @@
-package lk.lumina;
-import jakarta.mail.*;import jakarta.mail.internet.*;import java.util.*;
-public class Mail{
- public static boolean enabled(){return !Config.get("smtp.host","").isBlank();}
- public static void send(String to,String subject,String body)throws Exception{if(!enabled())return;Properties p=new Properties();p.put("mail.smtp.host",Config.get("smtp.host",""));p.put("mail.smtp.port",Config.get("smtp.port","587"));p.put("mail.smtp.auth","true");p.put("mail.smtp.starttls.enable","true");p.put("mail.smtp.starttls.required","true");p.put("mail.smtp.connectiontimeout","5000");p.put("mail.smtp.timeout","5000");p.put("mail.smtp.writetimeout","5000");Session s=Session.getInstance(p,new Authenticator(){protected PasswordAuthentication getPasswordAuthentication(){return new PasswordAuthentication(Config.get("smtp.user",""),Config.get("smtp.password",""));}});MimeMessage m=new MimeMessage(s);m.setFrom(new InternetAddress(Config.get("smtp.from",Config.get("smtp.user",""))));m.setRecipients(Message.RecipientType.TO,InternetAddress.parse(to));m.setSubject(subject,"UTF-8");m.setText(body,"UTF-8");Transport.send(m);}
- public static void deliver()throws Exception{if(!enabled())return;for(var n:DB.list("SELECT TOP 20 n.*,u.email FROM notifications n JOIN users u ON u.id=n.user_id WHERE n.email_sent=0 ORDER BY n.id")){send(n.get("email").toString(),n.get("title").toString(),n.get("message")+"\n\n"+Config.get("app.url","http://localhost:8080/lumina")+n.get("link"));DB.update("UPDATE notifications SET email_sent=1 WHERE id=?",n.get("id"));}}
-}
