@@ -1,0 +1,304 @@
+package lk.lumina.service;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import lk.lumina.repository.JdbcRepository;
+import lk.lumina.repository.ReportRepository;
+import lk.lumina.util.BusinessRules;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public final class ReportService {
+  public static final Map<String, String> NAMES = new LinkedHashMap<>();
+
+  static {
+    NAMES.put("members", "Member activity");
+    NAMES.put("overdue", "Overdue books");
+    NAMES.put("inventory", "Book inventory");
+    NAMES.put("physical", "Physical borrowing");
+    NAMES.put("digital", "Digital borrowing");
+    NAMES.put("payments", "Payments & revenue");
+    NAMES.put("fines", "Fines");
+    NAMES.put("reservations", "Reservations");
+    NAMES.put("suppliers", "Suppliers");
+    NAMES.put("purchases", "Purchases");
+    NAMES.put("categories", "Category collection");
+    NAMES.put("popular", "Most borrowed books");
+    NAMES.put("reading", "Most accessed digital books");
+    NAMES.put("monthly", "Monthly revenue");
+    NAMES.put("monthly-borrowing", "Monthly borrowing");
+  }
+
+  public static void prepare(HttpServletRequest q, Map<String, Object> u) throws Exception {
+    String type = Objects.toString(q.getParameter("type"), "inventory");
+    BusinessRules.require(NAMES.containsKey(type), "Choose a report.");
+    List<Object> args = new ArrayList<>();
+    String sql;
+    String group = "";
+    String time = null;
+    String branch = "";
+    String category = "";
+    Long br = u.get("role").equals("BRANCH_MANAGER") ? JdbcRepository.id(u, "branch_id") : null;
+    String requested = Objects.toString(q.getParameter("branch"), "");
+    if (br == null && !requested.isBlank()) br = Long.parseLong(requested);
+    switch (type) {
+      case "members":
+        sql =
+            "SELECT u.id,u.name,u.email,u.member_type,u.active,(SELECT COUNT(*) FROM loans l WHERE"
+                + " l.user_id=u.id) AS total_loans,(SELECT COUNT(*) FROM loans l WHERE"
+                + " l.user_id=u.id AND l.status IN ('ACTIVE','OVERDUE')) AS open_loans FROM users u"
+                + " WHERE u.role='READER'";
+        branch = "u.branch_id=?";
+        break;
+      case "overdue":
+        sql =
+            "SELECT l.id,u.name,b.title,l.due_at,cp.branch_id FROM loans l JOIN users u ON"
+                + " u.id=l.user_id JOIN books b ON b.id=l.book_id JOIN copies cp ON cp.id=l.copy_id"
+                + " WHERE l.kind='PHYSICAL' AND l.status IN ('ACTIVE','OVERDUE') AND"
+                + " l.due_at<CURRENT_TIMESTAMP";
+        branch = "cp.branch_id=?";
+        time = "l.due_at";
+        category = "b.category_id=?";
+        break;
+      case "physical":
+      case "digital":
+        sql =
+            "SELECT l.id,b.title,u.name,l.kind,l.status,l.start_at,l.due_at,l.returned_at FROM"
+                + " loans l JOIN books b ON b.id=l.book_id JOIN users u ON u.id=l.user_id WHERE"
+                + " l.kind='"
+                + type.toUpperCase(Locale.ROOT)
+                + "'";
+        time = "l.start_at";
+        branch =
+            type.equals("physical")
+                ? "l.copy_id IN (SELECT id FROM copies WHERE branch_id=?)"
+                : "u.branch_id=?";
+        category = "b.category_id=?";
+        break;
+      case "payments":
+        sql =
+            "SELECT"
+                + " p.id,u.name,p.amount,p.currency,p.provider,p.method,p.status,p.created_at,p.paid_at"
+                + " FROM payments p JOIN users u ON u.id=p.user_id WHERE 1=1";
+        time = "p.created_at";
+        branch = "u.branch_id=?";
+        break;
+      case "fines":
+        sql =
+            "SELECT f.id,u.name,b.title,f.amount,(f.amount-(SELECT COALESCE(SUM(p.amount),0) FROM"
+                + " payments p WHERE p.fine_id=f.id AND p.status='SUCCESSFUL')) AS"
+                + " balance,f.status,f.reason,f.created_at FROM fines f JOIN users u ON"
+                + " u.id=f.user_id JOIN loans l ON l.id=f.loan_id JOIN books b ON b.id=l.book_id"
+                + " WHERE 1=1";
+        time = "f.created_at";
+        branch = "l.copy_id IN (SELECT id FROM copies WHERE branch_id=?)";
+        category = "b.category_id=?";
+        break;
+      case "reservations":
+        sql =
+            "SELECT r.id,u.name,b.title,br.name AS branch,r.status,r.created_at,r.ready_until FROM"
+                + " reservations r JOIN users u ON u.id=r.user_id JOIN books b ON b.id=r.book_id"
+                + " JOIN branches br ON br.id=r.branch_id WHERE 1=1";
+        time = "r.created_at";
+        branch = "r.branch_id=?";
+        category = "b.category_id=?";
+        break;
+      case "purchases":
+        sql =
+            "SELECT p.id,s.name AS"
+                + " supplier,b.title,p.quantity,p.received_quantity,p.invoice_ref,p.unit_cost,p.quantity*p.unit_cost"
+                + " AS total,p.status,p.created_at FROM purchases p JOIN suppliers s ON"
+                + " s.id=p.supplier_id JOIN books b ON b.id=p.book_id WHERE 1=1";
+        time = "p.created_at";
+        branch = "p.branch_id=?";
+        category = "b.category_id=?";
+        break;
+      case "suppliers":
+        sql = "SELECT id,name,email,phone,address,active FROM suppliers WHERE 1=1";
+        break;
+      case "categories":
+        sql =
+            "SELECT c.name,COUNT(b.id) AS books FROM categories c LEFT JOIN books b ON"
+                + " b.category_id=c.id WHERE 1=1";
+        category = "c.id=?";
+        branch = "EXISTS (SELECT 1 FROM copies cp WHERE cp.book_id=b.id AND cp.branch_id=?)";
+        group = " GROUP BY c.name";
+        break;
+      case "popular":
+      case "reading":
+        sql =
+            "SELECT b.id,b.title,COUNT(l.id) AS borrowings,COALESCE(SUM(l.read_count),0) AS"
+                + " reader_opens FROM books b LEFT JOIN loans l ON l.book_id=b.id"
+                + (type.equals("reading") ? " AND l.kind='DIGITAL'" : "")
+                + " WHERE 1=1";
+        time = "l.start_at";
+        branch = "l.copy_id IN (SELECT id FROM copies WHERE branch_id=?)";
+        category = "b.category_id=?";
+        group = " GROUP BY b.id,b.title ORDER BY borrowings DESC";
+        break;
+      case "monthly-borrowing":
+        sql =
+            "SELECT YEAR(l.start_at) AS report_year,MONTH(l.start_at) AS"
+                + " report_month,l.kind,COUNT(*) AS borrowings FROM loans l JOIN books b ON"
+                + " b.id=l.book_id WHERE l.status<>'VOID'";
+        time = "l.start_at";
+        branch = "l.copy_id IN (SELECT id FROM copies WHERE branch_id=?)";
+        category = "b.category_id=?";
+        group =
+            " GROUP BY YEAR(l.start_at),MONTH(l.start_at),l.kind ORDER BY report_year,report_month";
+        break;
+      case "monthly":
+        sql =
+            "SELECT YEAR(p.paid_at) AS report_year,MONTH(p.paid_at) AS report_month,COUNT(*) AS"
+                + " payments,SUM(p.amount) AS revenue FROM payments p JOIN users u ON"
+                + " u.id=p.user_id LEFT JOIN fines f ON f.id=p.fine_id LEFT JOIN loans l ON"
+                + " l.id=f.loan_id WHERE p.status='SUCCESSFUL'";
+        time = "p.paid_at";
+        branch = "l.copy_id IN (SELECT id FROM copies WHERE branch_id=?)";
+        group = " GROUP BY YEAR(p.paid_at),MONTH(p.paid_at) ORDER BY report_year,report_month";
+        break;
+      default:
+        sql =
+            "SELECT b.id,b.title,b.isbn,a.name AS author,c.name AS"
+                + " category,b.format,b.fee,b.active,(SELECT COUNT(*) FROM copies cp WHERE"
+                + " cp.book_id=b.id AND cp.status='AVAILABLE'"
+                + (br == null ? "" : " AND cp.branch_id=" + br)
+                + ") AS available FROM books b JOIN authors a ON a.id=b.author_id JOIN categories c"
+                + " ON c.id=b.category_id WHERE 1=1";
+        branch = "EXISTS (SELECT 1 FROM copies cp WHERE cp.book_id=b.id AND cp.branch_id=?)";
+        category = "b.category_id=?";
+    }
+    if (br != null && !branch.isEmpty()) {
+      sql += " AND " + branch;
+      args.add(br);
+    }
+    String cat = Objects.toString(q.getParameter("category"), "");
+    if (!cat.isBlank() && !category.isEmpty()) {
+      sql += " AND " + category;
+      args.add(Long.parseLong(cat));
+    }
+    if (time != null) {
+      String from = Objects.toString(q.getParameter("from"), ""),
+          to = Objects.toString(q.getParameter("to"), "");
+      BusinessRules.require(
+          from.isBlank() || to.isBlank() || !LocalDate.parse(from).isAfter(LocalDate.parse(to)),
+          "Start date must not be after end date.");
+      if (!from.isBlank()) {
+        sql += " AND " + time + ">=?";
+        args.add(Timestamp.valueOf(LocalDate.parse(from).atStartOfDay()));
+      }
+      if (!to.isBlank()) {
+        sql += " AND " + time + "<?";
+        args.add(Timestamp.valueOf(LocalDate.parse(to).plusDays(1).atStartOfDay()));
+      }
+    }
+    q.setAttribute("type", type);
+    q.setAttribute(
+        "rows",
+        ReportRepository.queryReport(String.valueOf(sql), String.valueOf(group), args.toArray()));
+    q.setAttribute(
+        "branches",
+        ReportRepository.listAvailableBranches(
+            String.valueOf(
+                (u.get("role").equals("BRANCH_MANAGER") ? " AND id=" + u.get("branch_id") : ""))));
+    q.setAttribute("categories", ReportRepository.listActiveCategories());
+  }
+
+  @SuppressWarnings("unchecked")
+  public static void export(HttpServletRequest q, HttpServletResponse r) throws Exception {
+    var rows = (List<Map<String, Object>>) q.getAttribute("rows");
+    String type = q.getAttribute("type").toString();
+    List<String> keys =
+        rows.isEmpty() ? List.of("No matching records") : new ArrayList<>(rows.get(0).keySet());
+    if ("pdf".equals(q.getParameter("format"))) {
+      r.setContentType("application/pdf");
+      r.setHeader("Content-Disposition", "attachment; filename=lumina-" + type + ".pdf");
+      try (PDDocument doc = new PDDocument()) {
+        PDPageContentStream out = null;
+        int line = 0;
+        try {
+          for (int i = -1; i < rows.size(); i++) {
+            if (line == 0 || line > 38) {
+              if (out != null) {
+                out.endText();
+                out.close();
+              }
+              PDPage p = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+              doc.addPage(p);
+              out = new PDPageContentStream(doc, p);
+              out.beginText();
+              out.setFont(PDType1Font.HELVETICA_BOLD, 14);
+              out.newLineAtOffset(36, 800);
+              out.showText("LUMINA LIBRARY / " + NAMES.get(type));
+              out.setFont(PDType1Font.HELVETICA, 9);
+              out.setLeading(18);
+              out.newLine();
+              line = 1;
+            }
+            String value =
+                i < 0
+                    ? String.join(" | ", keys)
+                    : String.join(
+                        " | ",
+                        rows.get(i).values().stream().map(v -> Objects.toString(v, "-")).toList());
+            value = value.replaceAll("[^\\x20-\\x7E]", "?");
+            for (int start = 0; start < value.length(); start += 100) {
+              if (line > 38) {
+                out.endText();
+                out.close();
+                PDPage p = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+                doc.addPage(p);
+                out = new PDPageContentStream(doc, p);
+                out.beginText();
+                out.setFont(PDType1Font.HELVETICA, 9);
+                out.setLeading(18);
+                out.newLineAtOffset(36, 800);
+                line = 1;
+              }
+              out.showText(value.substring(start, Math.min(start + 100, value.length())));
+              out.newLine();
+              line++;
+            }
+            out.newLine();
+            line++;
+          }
+          if (out != null) out.endText();
+        } finally {
+          if (out != null) out.close();
+        }
+        doc.save(r.getOutputStream());
+      }
+    } else {
+      r.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      r.setHeader("Content-Disposition", "attachment; filename=lumina-" + type + ".xlsx");
+      try (XSSFWorkbook wb = new XSSFWorkbook()) {
+        var sheet = wb.createSheet("Lumina report");
+        var h = sheet.createRow(0);
+        for (int i = 0; i < keys.size(); i++) h.createCell(i).setCellValue(keys.get(i));
+        int row = 1;
+        for (var data : rows) {
+          var rr = sheet.createRow(row++);
+          for (int i = 0; i < keys.size(); i++) {
+            var v = data.get(keys.get(i));
+            if (v instanceof Number n) rr.createCell(i).setCellValue(n.doubleValue());
+            else rr.createCell(i).setCellValue(Objects.toString(v, ""));
+          }
+        }
+        sheet.createFreezePane(0, 1);
+        for (int i = 0; i < keys.size(); i++) sheet.setColumnWidth(i, 6000);
+        wb.write(r.getOutputStream());
+      }
+    }
+  }
+}

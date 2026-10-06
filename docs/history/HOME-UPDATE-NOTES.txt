@@ -1,0 +1,22 @@
+HOME PAGE TYPOGRAPHY AND SCROLL UPDATE
+
+- Warm ivory headings with soft gold emphasis across all seven scenes.
+- Line-by-line heading reveals, staggered labels, descriptions and actions.
+- Scroll-linked motion reverses naturally when scrolling backwards.
+- Clear reading intervals and outgoing fades before the next scene.
+- Directional dark shading improves contrast over the library scenes.
+- Responsive type and spacing for desktop, phone and short landscape screens.
+- Reduced-motion users receive simple fades without text movement.
+- Inactive scenes are hidden from keyboard interaction.
+- Existing wording, seven background scenes, book-reference automation and
+  grouped card-number formatting are retained.
+
+Verification:
+- Rebuilt application; all 22 Java tests passed.
+- JavaScript syntax check passed.
+- Browser inspection of all seven desktop scenes, phone opening/final scenes,
+  short landscape opening, reverse scroll and collection shortcut.
+- No browser console errors observed during inspection.
+- Rebuilt WAR checked against the edited source files.
+
+Start using the existing launcher instructions. dist/lumina.war is rebuilt.

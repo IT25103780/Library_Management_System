@@ -1,0 +1,42 @@
+/* Uses the existing Lumina colors and typography throughout. */
+.book-qr{display:flex;align-items:center;gap:14px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);width:fit-content}
+.book-qr svg{width:88px;height:88px;flex:none;border-radius:6px}
+.book-qr span{font-family:var(--serif);font-size:17px;color:var(--brown)}
+.book-qr small{display:block;font:11px var(--sans);color:var(--muted);margin-top:6px}
+.demo-card-details{border:1px solid var(--line);border-radius:16px;padding:20px;margin:24px 0;background:var(--white)}
+.demo-card-details legend{padding:0 8px;font-family:var(--serif);font-size:22px}
+.demo-card-details .micro{margin-top:0}
+.card-detail-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+.card-hint{display:block;font-size:11px;color:var(--muted);margin-top:-8px}
+#demo-number{letter-spacing:.13em;font-variant-numeric:tabular-nums}
+.refined-workspace .workspace-title,.refined-workspace .shelf-heading,.refined-workspace .catalog-intro{position:relative;padding-bottom:34px;margin-bottom:34px;border-bottom:1px solid var(--line)}
+.refined-workspace .workspace-title:after,.refined-workspace .shelf-heading:after{content:'';position:absolute;bottom:-2px;left:0;width:72px;height:3px;background:var(--gold);border-radius:3px}
+.refined-workspace h1{letter-spacing:-.035em;line-height:1.12}
+.refined-workspace .eyebrow{letter-spacing:.17em}
+.refined-workspace .date-card{border:1px solid var(--line);border-radius:16px;padding:22px 26px;background:var(--white);box-shadow:0 8px 24px #2b1b1708}
+.refined-workspace .stats-grid{gap:20px}
+.refined-workspace .stat-card{padding:28px;transition:transform .25s,box-shadow .25s,border-color .25s}
+.refined-workspace .stat-card strong{font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+.refined-workspace .stat-card:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 16px 32px #2b1b1710}
+.refined-workspace .panel{padding:30px}
+.refined-workspace .panel.dark-panel{background:var(--chocolate);color:var(--ivory);position:relative;overflow:hidden}
+.refined-workspace .dark-panel:after{content:'';position:absolute;width:190px;height:190px;border:1px solid #c9a22740;border-radius:50%;right:-95px;top:-95px;pointer-events:none}
+.refined-workspace .activity-row{border-radius:10px;padding:16px 12px;transition:background .2s}
+.refined-workspace .activity-row:hover{background:var(--ivory)}
+.refined-workspace .bar-track{border-radius:20px;overflow:hidden}
+.refined-workspace .bar-track>div{border-radius:20px;transform-origin:left;animation:lumina-bar .85s ease both}
+.refined-workspace .notification,.refined-workspace .reservation-card{border:1px solid var(--line);border-radius:18px;background:var(--white);box-shadow:0 8px 26px #2b1b1706;transition:box-shadow .25s,transform .25s}
+.refined-workspace .notification:hover,.refined-workspace .reservation-card:hover{box-shadow:0 14px 30px #2b1b1710;transform:translateY(-2px)}
+.refined-workspace .section-heading{padding-bottom:18px}
+.refined-workspace .book-detail{gap:32px}
+.refined-workspace .borrow-panel{padding:26px;border-top:3px solid var(--gold)}
+.refined-workspace .book-facts{border-radius:14px;background:var(--white);padding:18px;gap:18px}
+.refined-workspace .workspace-nav a{position:relative}
+.refined-workspace .workspace-nav a.active:after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:var(--gold);position:absolute;bottom:3px;left:calc(50% - 2px)}
+.refined-workspace :is(a,button,input,select,textarea):focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+.refined-workspace .lumina-enter{animation:lumina-enter .65s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--arrival,0ms)}
+@keyframes lumina-enter{from{opacity:0;translate:0 16px}to{opacity:1;translate:0 0}}
+@keyframes lumina-bar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(max-width:700px){.refined-workspace .panel{padding:22px}.refined-workspace .stat-card{padding:21px}.refined-workspace .stats-grid{gap:12px}.refined-workspace .date-card{padding:16px}.refined-workspace .workspace-title,.refined-workspace .shelf-heading{gap:22px}.demo-card-details{padding:16px}.card-detail-row{gap:12px}.refined-workspace .book-detail{gap:24px}}
+@media(prefers-reduced-motion:reduce){.refined-workspace .lumina-enter,.refined-workspace .bar-track>div{animation:none!important}.refined-workspace .stat-card:hover,.refined-workspace .notification:hover,.refined-workspace .reservation-card:hover{transform:none}}
+@media print{.refined-workspace .lumina-enter{animation:none!important;opacity:1;translate:none}.refined-workspace .panel{box-shadow:none}.book-qr{break-inside:avoid}}

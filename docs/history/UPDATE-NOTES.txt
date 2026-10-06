@@ -1,0 +1,25 @@
+UPDATE: Automatic book references and grouped card numbers
+
+New books receive a fixed LUM reference automatically. Existing references are preserved.
+The next number starts above the largest existing LUM reference and the saved counter.
+The form preview is provisional; the final reference is allocated when saving.
+Concurrent saves are protected by a database lock and transaction retry.
+Deleting a book does not lower the counter. Failed saves roll back the allocation.
+Numbers use at least four digits and continue beyond LUM-9999.
+Existing databases are upgraded automatically on application startup.
+
+The demo checkout displays 16 card digits as 1234 5678 9012 3456.
+Typing, paste, validation and deletion around spaces are supported.
+Demo card details remain browser-only. Live PayHere card entry stays on PayHere.
+
+Validation performed:
+- Maven build: successful; 22 tests passed.
+- Concurrent allocations, rollback, counter persistence and five-digit references.
+- Running Tomcat: create, edit, next reference, ignored manual reference,
+  deletion without reuse, and rendered checkout constraints.
+- JavaScript checks: formatting, paste, digit validation, deletion and empty input.
+- Packaged WAR verified against the edited web files.
+Tests used the embedded demo database; SQL Server was not exercised in this session.
+
+Run using the existing Start-Lumina.cmd or Start-Demo.cmd instructions.
+The rebuilt application is included in dist/lumina.war.

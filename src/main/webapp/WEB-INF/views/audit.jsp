@@ -1,0 +1,4 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ include file="header.jspf" %>
+<section class="section"><h1>Activity log</h1><p>Latest 1,000 matching events. Historical records are retained.</p><form method="get" class="record-form"><label>Search action, operator or detail<input name="q" value="<%=ViewUtils.e(request.getParameter("q"))%>"></label><button class="button">Search</button></form><div class="table-wrap"><table><thead><tr><th>Time</th><th>Operator</th><th>Action</th><th>Details</th></tr></thead><tbody><%for(var row:(List<Map<String,Object>>)request.getAttribute("rows")){%><tr><td><%=ViewUtils.date(row.get("created_at"))%></td><td><%=ViewUtils.e(row.get("username"))%></td><td><%=ViewUtils.e(row.get("action"))%></td><td><%=ViewUtils.e(row.get("details"))%></td></tr><%}%></tbody></table></div></section>
+<%@ include file="footer.jspf" %>

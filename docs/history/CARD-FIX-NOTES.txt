@@ -1,0 +1,23 @@
+CARD NUMBER FIX
+
+Card numbers automatically display in four groups: 1234 5678 9012 3456.
+Only digits count toward the required 16; separators are not counted.
+Any 16-digit sample number is accepted by the demo field.
+The hint shows an accurate N / 16 digits, with a clear incomplete-input message.
+Spaced and unspaced values are both compatible with browser validation.
+Paste, selection replacement, and deletion beside separators are supported.
+Card formatting now has its own versioned script. The older workspace script
+also has a new version URL to avoid stale cached validation after deployment.
+Demo card details remain browser-only and are not sent or saved.
+
+Verification:
+- 22 Java tests passed; application rebuilt.
+- Card formatter regression checks passed.
+- Actual browser typing inserted a space after each group of four.
+- Browser accepted both spaced and unspaced 16-digit samples.
+- Paste with separators and backspace beside a space worked.
+- A 15-digit value blocked submission with Enter all 16 digits.
+- An arbitrary 16-digit sample completed the demo checkout successfully.
+
+Previous home-page improvements and automatic book references are included.
+Use the rebuilt dist/lumina.war through the existing launcher instructions.

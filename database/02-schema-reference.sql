@@ -1,0 +1,30 @@
+-- Fresh database reference. Startup normally creates these tables automatically.
+CREATE TABLE branches (id bigint IDENTITY(1,1) PRIMARY KEY,name nvarchar(180) NOT NULL,address nvarchar(500) NOT NULL,phone nvarchar(40),hours nvarchar(200),active int NOT NULL DEFAULT 1);
+CREATE TABLE users (id bigint IDENTITY(1,1) PRIMARY KEY,name nvarchar(180) NOT NULL,email nvarchar(180) NOT NULL UNIQUE,username nvarchar(100) NOT NULL UNIQUE,password_hash varchar(400) NOT NULL,phone nvarchar(40),address nvarchar(500),role varchar(30) NOT NULL DEFAULT 'READER',branch_id bigint REFERENCES branches(id),active int NOT NULL DEFAULT 1,created_at datetime2 NOT NULL);
+CREATE TABLE categories (id bigint IDENTITY(1,1) PRIMARY KEY,name nvarchar(180) NOT NULL UNIQUE,description nvarchar(1000),active int NOT NULL DEFAULT 1);
+CREATE TABLE authors (id bigint IDENTITY(1,1) PRIMARY KEY,name nvarchar(180) NOT NULL,description nvarchar(1000),active int NOT NULL DEFAULT 1);
+CREATE TABLE publishers (id bigint IDENTITY(1,1) PRIMARY KEY,name nvarchar(180) NOT NULL,description nvarchar(1000),active int NOT NULL DEFAULT 1);
+CREATE TABLE books (id bigint IDENTITY(1,1) PRIMARY KEY,isbn nvarchar(40) NOT NULL UNIQUE,title nvarchar(240) NOT NULL,author_id bigint NOT NULL REFERENCES authors(id),category_id bigint NOT NULL REFERENCES categories(id),publisher_id bigint NOT NULL REFERENCES publishers(id),description nvarchar(4000),publication_year int NOT NULL,edition nvarchar(60),format varchar(20) NOT NULL,cover_path nvarchar(200),pdf_path nvarchar(200),fee decimal(12,2) NOT NULL DEFAULT 250,duration_days int NOT NULL DEFAULT 7,active int NOT NULL DEFAULT 1,created_at datetime2 NOT NULL);
+CREATE TABLE copies (id bigint IDENTITY(1,1) PRIMARY KEY,book_id bigint NOT NULL REFERENCES books(id),branch_id bigint NOT NULL REFERENCES branches(id),status varchar(30) NOT NULL DEFAULT 'AVAILABLE');
+CREATE TABLE loans (id bigint IDENTITY(1,1) PRIMARY KEY,user_id bigint NOT NULL REFERENCES users(id),book_id bigint NOT NULL REFERENCES books(id),copy_id bigint REFERENCES copies(id),kind varchar(20) NOT NULL,status varchar(30) NOT NULL,start_at datetime2 NOT NULL,due_at datetime2 NOT NULL,returned_at datetime2,page_number int NOT NULL DEFAULT 1,read_count int NOT NULL DEFAULT 0);
+CREATE TABLE fines (id bigint IDENTITY(1,1) PRIMARY KEY,user_id bigint NOT NULL REFERENCES users(id),loan_id bigint NOT NULL UNIQUE REFERENCES loans(id),amount decimal(12,2) NOT NULL,status varchar(30) NOT NULL DEFAULT 'OUTSTANDING',reason nvarchar(500),created_at datetime2 NOT NULL);
+CREATE TABLE payments (id bigint IDENTITY(1,1) PRIMARY KEY,order_ref varchar(80) NOT NULL UNIQUE,user_id bigint NOT NULL REFERENCES users(id),book_id bigint REFERENCES books(id),fine_id bigint REFERENCES fines(id),loan_id bigint REFERENCES loans(id),amount decimal(12,2) NOT NULL,currency varchar(5) NOT NULL DEFAULT 'LKR',duration_days int NOT NULL DEFAULT 7,status varchar(30) NOT NULL DEFAULT 'PENDING',provider varchar(30) NOT NULL,provider_ref varchar(120),method varchar(60),created_at datetime2 NOT NULL,paid_at datetime2);
+CREATE TABLE reservations (id bigint IDENTITY(1,1) PRIMARY KEY,user_id bigint NOT NULL REFERENCES users(id),book_id bigint NOT NULL REFERENCES books(id),branch_id bigint NOT NULL REFERENCES branches(id),copy_id bigint REFERENCES copies(id),status varchar(30) NOT NULL DEFAULT 'WAITING',created_at datetime2 NOT NULL,ready_until datetime2);
+CREATE TABLE notifications (id bigint IDENTITY(1,1) PRIMARY KEY,user_id bigint NOT NULL REFERENCES users(id),title nvarchar(180) NOT NULL,message nvarchar(1000) NOT NULL,link nvarchar(200) NOT NULL,is_read int NOT NULL DEFAULT 0,dedupe_key varchar(180) NOT NULL UNIQUE,created_at datetime2 NOT NULL,email_sent int NOT NULL DEFAULT 0);
+CREATE TABLE suppliers (id bigint IDENTITY(1,1) PRIMARY KEY,name nvarchar(180) NOT NULL,email nvarchar(180),phone nvarchar(40),address nvarchar(500),active int NOT NULL DEFAULT 1);
+CREATE TABLE purchases (id bigint IDENTITY(1,1) PRIMARY KEY,supplier_id bigint NOT NULL REFERENCES suppliers(id),book_id bigint NOT NULL REFERENCES books(id),branch_id bigint NOT NULL REFERENCES branches(id),quantity int NOT NULL,unit_cost decimal(12,2) NOT NULL,status varchar(30) NOT NULL DEFAULT 'ORDERED',created_at datetime2 NOT NULL);
+CREATE TABLE audit_log (id bigint IDENTITY(1,1) PRIMARY KEY,user_id bigint REFERENCES users(id),action nvarchar(200) NOT NULL,details nvarchar(1000),created_at datetime2 NOT NULL);
+CREATE TABLE reset_tokens (id bigint IDENTITY(1,1) PRIMARY KEY,user_id bigint NOT NULL REFERENCES users(id),token_hash varchar(100) NOT NULL UNIQUE,expires_at datetime2 NOT NULL,used int NOT NULL DEFAULT 0);
+CREATE TABLE settings (setting_key varchar(80) PRIMARY KEY,setting_value nvarchar(200) NOT NULL);
+
+GO
+-- Optional reference only: startup runs the equivalent additive migrations automatically.
+-- Run in the configured LuminaLibrary database, never in an unrelated schema.
+IF COL_LENGTH('users','member_type') IS NULL ALTER TABLE users ADD member_type varchar(20) NOT NULL DEFAULT 'STUDENT';
+IF COL_LENGTH('copies','shelf') IS NULL ALTER TABLE copies ADD shelf nvarchar(100);
+IF COL_LENGTH('purchases','received_quantity') IS NULL ALTER TABLE purchases ADD received_quantity int NOT NULL DEFAULT 0;
+IF COL_LENGTH('purchases','invoice_ref') IS NULL ALTER TABLE purchases ADD invoice_ref nvarchar(100);
+IF COL_LENGTH('purchases','notes') IS NULL ALTER TABLE purchases ADD notes nvarchar(500);
+IF COL_LENGTH('fines','adjusted') IS NULL ALTER TABLE fines ADD adjusted int NOT NULL DEFAULT 0;
+GO
+UPDATE purchases SET received_quantity=quantity WHERE status='RECEIVED' AND received_quantity=0;

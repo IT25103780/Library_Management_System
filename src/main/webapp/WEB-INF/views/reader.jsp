@@ -1,0 +1,9 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ include file="header.jspf" %>
+
+<%var loan=(Map<String,Object>)request.getAttribute("loan");%><section class="pdf-reader" data-loan="<%=loan.get("id")%>" data-expiry="<%=((Timestamp)loan.get("due_at")).toInstant()%>" data-start-page="<%=loan.get("page_number")%>">
+<div class="reader-toolbar"><a href="<%=ctx%>/my-books">&#8592; My Books</a><div><strong><%=ViewUtils.e(loan.get("title"))%></strong><small>Access until <%=ViewUtils.date(loan.get("due_at"))%></small></div><button class="button small ghost" id="pdf-fullscreen">Full screen</button></div>
+<div class="reader-controls"><button class="button small ghost" id="pdf-prev" aria-label="Previous page">&#8592;</button><label>Page <input type="number" id="pdf-page" min="1" value="<%=loan.get("page_number")%>"> of <span id="pdf-count">…</span></label><button class="button small ghost" id="pdf-next" aria-label="Next page">&#8594;</button><label>Zoom <select id="pdf-zoom"><option value="fit">Fit width</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option></select></label><span id="pdf-message" role="status">Opening your book…</span><input type="hidden" id="pdf-csrf" value="<%=csrf%>"></div>
+<div class="pdf-stage" id="pdf-stage"><canvas id="pdf-canvas" aria-label="Book page"></canvas><div id="pdf-text" class="pdf-text" aria-label="Page text"></div></div><div class="reader-fallback">Your page is saved automatically. <a href="<%=ctx%>/pdf?id=<%=loan.get("id")%>" target="_blank" rel="noopener">Open the protected PDF in your browser</a> for printing, text search, or an alternative accessible reader.</div></section><script type="module" src="<%=ctx%>/assets/reader.mjs"></script>
+
+<%@ include file="footer.jspf" %>

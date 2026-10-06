@@ -1,0 +1,5 @@
+JDK 17; unchanged Build.ps1 and pom.xml.
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+[INFO] Total time:  34.774 s
+[INFO] Finished at: 2026-10-06T20:14:55+05:30

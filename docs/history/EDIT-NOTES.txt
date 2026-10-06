@@ -1,0 +1,19 @@
+LUMINA LIBRARY — UPDATED APP
+
+Start as before with Start-Demo.cmd (embedded demonstration database) or
+Start-Lumina.cmd (your configured database). dist/lumina.war is rebuilt.
+
+Changes:
+* No displayed barcodes anywhere, including printable/downloadable receipts.
+* One small QR on the book details page only.
+* Demo card entry: name, exactly 16 numeric digits, expiry MM/YY, three-digit CVV.
+  Sample: Demo Reader / 1234567890123456 / 12/29 / 123.
+  Details are validated in the browser only, never sent or stored. No charge.
+* Enhanced signed-in page styling and animations, preserving colors and fonts.
+
+For QR links opened from another device, configure app.url to the app's
+reachable address instead of localhost. The local launcher sets APP_URL
+for its chosen port.
+
+Validation: all 21 Java tests passed; HTTP smoke and enhancement suites passed;
+browser checked dashboard, book QR, invalid 15-digit and valid 16-digit checkout.
